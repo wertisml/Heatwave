@@ -1,54 +1,65 @@
-library(lubridate)
+library(EpiNOAA)
 library(dplyr)
 library(data.table)
 library(tictoc)
 library(dplyr)
 library(weathermetrics)
 library(humidity)
-
-setwd("E:/PRISM_Data/Final_Products")
+setwd("~/GRAM/HeatWave/Data")
 #Make sure its the correct one
 
-NC_Zip_Level <- fread(file.choose())
-NC_Zip_Level$Tdmean <- as.numeric(NC_Zip_Level$tdmean)
-NC_Zip_Level$TMIN <- as.numeric(NC_Zip_Level$tmin)
-NC_Zip_Level$TMAX <- as.numeric(NC_Zip_Level$tmax)
-NC_Zip_Level$TAVG <- as.numeric(NC_Zip_Level$tmean)
-NC_Zip_Level$Zip <- as.numeric(NC_Zip_Level$Zip)
-NC_Zip_Level$month <- month(NC_Zip_Level$Date)
+#data_2020 <- read_nclimgrid_epinoaa(beginning_date = '2020-03-21', end_date = '2020-12-21', workers = 10)
+#data_2021 <- read_nclimgrid_epinoaa(beginning_date = '2021-01-01', end_date = '2021-12-31', workers = 5)
+data_2021_NC <- read_nclimgrid_epinoaa(beginning_date="2021-01-01",end_date="2021-12-31",
+                                       spatial_res="cty",states="NC", workers = 5)
+data_2021_NC <- fread(file.choose())
+#data_2021_NC$PRCP <- NULL
+data_2021_NC$TMIN <- as.numeric(data_2021_NC$TMIN)
+data_2021_NC$TMAX <- as.numeric(data_2021_NC$TMAX)
+data_2021_NC$TAVG <- as.numeric(data_2021_NC$TAVG)
+data_2021_NC$region_code <- as.numeric(data_2021_NC$region_code)
 
+HeatWave <- data_2021_NC %>%
+  group_by(date)%>%
+  arrange(region_code)
+#Sum of the total days in a year
+number_of_days <- aggregate(TAVG~region_code,HeatWave,length)
+names(number_of_days)[2] <- 'number_of_days'
+#Total TAVG value for a year
+total_temp <- aggregate(TAVG~region_code,HeatWave,sum)
+names(total_temp)[2] <- 'total_temp'
 #calculating extremes
-Extremes <- NC_Zip_Level %>% 
-  dplyr::group_by(Zip, month) %>% 
-  #na.omit(.)%>%
-  dplyr::do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05)))))
-  
+Extremes <- HeatWave %>% group_by(region_code) %>% 
+  do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05)))))
 #Rename columns
-colnames(Extremes) <- c('Zip','month', 'H95', 'H97', 'H99','C1', 'C3', 'C5')
+colnames(Extremes) <- c('region_code','H95', 'H97', 'H99','C1', 'C3', 'C5')
 #merge in columns
-temperature <- merge(NC_Zip_Level, Extremes, by = c("Zip", "month"), all.x = TRUE)
-
-#Daily difference between high and low temperature
+temps <- merge(number_of_days,total_temp)
+#Calculate the average temp for the year by FIPS/County
+temps$yearly_average <- temps$total_temp / temps$number_of_days
+#Merge in the average yearly temp with the original data
+trying <- merge(HeatWave, temps, by = "region_code", all.x = TRUE)
+#Merge in the extremes with the other temperature data
+temperature <- merge(trying, Extremes, by = "region_code", all.x = TRUE)
+#Turn region_code and day from a character to numeric
+temperature$region_code <- as.numeric(temperature$region_code)
+temperature$day <- as.numeric(temperature$day)
+#Compare any day to the 95th percentile
 temperature$daily_diff <- (temperature$TMAX - temperature$TMIN)
 #number the region_codes from 1 to end
-temperature$number <- cumsum(c(1,as.numeric(diff(temperature$Zip))!=0))
-#Compare any day to the 95th percentile
+temperature$number <- cumsum(c(1,as.numeric(diff(temperature$region_code))!=0))
+#
 Weather <- temperature %>%
   mutate(A95 = fifelse(TAVG > H95, 1, 0),
          A97 = fifelse(TAVG > H97, 1, 0),
          A99 = fifelse(TAVG > H99, 1, 0),
          B5 = fifelse(TAVG < C5, 1, 0),
          B3 = fifelse(TAVG < C3, 1, 0),
-         B1 = fifelse(TAVG < C1, 1, 0),
-         RH = round(RH(TAVG, Tdmean, isK = FALSE), 2),
-         Heat_Index = heat.index(t = TAVG, rh = fifelse(RH > 100 , 100, RH),
-                        temperature.metric = "celsius", output.metric = "celsius", round = 0),
-         Discomfort_Index = (TAVG - 0.55 * (1 - 0.01 * RH) * (TAVG - 14.5 ))) %>%
-         na.omit(.)
-
-#==============================================================================#
+         B1 = fifelse(TAVG < C1, 1, 0))
+###################################################################################################################
+###################################################################################################################
+###################################################################################################################
 #Calculate Heat Wave
-#==============================================================================#
 
 Above_95th <- NULL
 Above_95th <- data.frame(Above_95th)
@@ -76,9 +87,10 @@ for (i in Weather$number) {
     print(n)
     for (j in mydata2$TAVG){
       #mydata2$Heatwave_condition <- 0
-      Zip <- mydata2$Zip
+      region_code <- mydata2$region_code
+      year <- mydata2$year
       month <- mydata2$month
-      Date <- mydata2$Date
+      date <- mydata2$date
       A95 <- mydata2$A95
       A97 <- mydata2$A97
       A99 <- mydata2$A99
@@ -86,13 +98,10 @@ for (i in Weather$number) {
       TMIN <- mydata2$TMIN
       TMAX <- mydata2$TMAX
       daily_diff <- mydata2$daily_diff
-      RH <- mydata2$RH
-      Heat_Index <- mydata2$Heat_Index
-      Discomfort_Index <- mydata2$Discomfort_Index
       b <- mydata2$number
       y <- fifelse(sum(mydata2$TAVG[x:(x+2)])/3 > sum(mydata2$H95[x:(x+2)])/3, 1, 0)
       z <- fifelse(sum(mydata2$TAVG[k:(k+2)])/3 > sum(mydata2$TAVG[(k-1):(k-30)])/30, 1, 0)
-      if(x <= 4747){
+      if(x <= 11321){
         if(y > 0){
           mydata2$Heatwave_condition[x:(x+2)] <- 1
         }else{
@@ -106,9 +115,8 @@ for (i in Weather$number) {
       k = k + 1
     }
     #Heatwave_condition <- head(Heatwave_condition, -2)
-    data <- data.frame(n, Zip, month, Date, 
-                       A95, A97, A99, Heatwave_condition, Above_95th, Above_Surrounding, daily_diff,
-                       TAVG, TMAX, TMIN, RH, Heat_Index, Discomfort_Index)
+    data <- data.frame(n, Above_95th, Above_Surrounding, region_code, year, month, date, daily_diff,
+                       A95, A97, A99, Heatwave_condition, TAVG, TMAX, TMIN)
     Data <- rbind(Data, data)
     n = n + 1
   }
@@ -116,9 +124,7 @@ for (i in Weather$number) {
 toc()
 Data3 <- na.omit(Data)
 
-#==============================================================================#
-# Calculate EHI_accl, EHI_sig, and EHF
-#==============================================================================#
+#calculate EHI_accl, EHI_sig, and EHF
 
 Data1 <- NULL
 data1 <- NULL
@@ -143,8 +149,8 @@ for (i in Weather$number) {
     mydata2$Heatwave_condition <- 0
     print(n)
     for (j in mydata2$TAVG){
-      Zip <- mydata2$Zip
-      if(x <= 4747){
+      if(x <= 11321){
+        year <- mydata2$year
         b <- mydata2$number
         y <- (sum(mydata2$TAVG[x:(x+2)])/3 - sum(mydata2$H95[x:(x+2)])/3)
         z <- (sum(mydata2$TAVG[k:(k+2)])/3 - sum(mydata2$TAVG[(k-1):(k-30)])/30)
@@ -160,7 +166,7 @@ for (i in Weather$number) {
       x = x + 1
       k = k + 1
     }
-    data1 <- data.frame(n, Zip, EHI_sig, EHI_accl, Heatwave_condition)
+    data1 <- data.frame(n, EHI_sig, EHI_accl, year, Heatwave_condition)
     Data1 <- rbind(Data1, data1)
     n = n + 1
   }
@@ -177,15 +183,15 @@ Data2$EHF <- with(Data2, EHI_sig * EHI_accl)
 
 Data2$Heatwave_condition <- NULL
 Data2$n <- NULL
-Data2$Zip <- NULL
+Data2$year <- NULL
 
 Heat_Index <- cbind(Data3, Data2)
-fwrite(Heat_Index, "NC_Heatwave_ML.csv")
-
-#==============================================================================#
+fwrite(Heat_Index, "SC_Heat_Index.csv")
+###################################################################################################################
+###################################################################################################################
+###################################################################################################################
 #Calculate Cold Wave
-#==============================================================================#
-
+#NEED TO DOWNLOAD 2 EXTRA DAYS OF DATA OR ELSE THE x<=363 wont get the last few days of the year
 Below_5th <- NULL
 Below_5th <- data.frame(Below_5th)
 Below_Surrounding <- NULL
@@ -212,24 +218,22 @@ for (i in Weather$number) {
     mydata$Coldwave_condition <- 0
     print(n)
     for (j in mydata$TAVG){
-      Zip <- mydata$Zip
+      region_code <- mydata$region_code
+      year <- mydata$year
       month <- mydata$month
-      Date <- mydata$Date
+      date <- mydata$date
       b <- mydata$number
       daily_diff <- mydata$daily_diff
-      RH <- mydata$RH
+      Relative_humidity <- mydata$Relative_humidity
       B1 <- mydata$B1
       B3 <- mydata$B3
       B5 <- mydata$B5
       TAVG <- mydata$TAVG
       TMAX <- mydata$TMAX
       TMIN <- mydata$TMIN
-      RH <- mydata$RH
-      Heat_Index <- mydata$Heat_Index
-      Discomfort_Index <- mydata2Discomfort_Index
       y <- fifelse(sum(mydata$TAVG[x:(x+2)])/3 < sum(mydata$C5[x:(x+2)])/3, 1, 0)
       z <- fifelse(sum(mydata$TAVG[k:(k+2)])/3 < sum(mydata$TAVG[(k-1):(k-30)])/30, 1, 0)
-      if(x <= 4747){
+      if(x <= 11321){
         if(y > 0){
           mydata$Coldwave_condition[x:(x+2)] <- 1
         }else{
@@ -242,9 +246,8 @@ for (i in Weather$number) {
       x = x + 1
       k = k + 1
     }
-    datar <- data.frame(n, Zip, month, Date, 
-                        B1, B3, B5, Coldwave_condition, Below_Surrounding, Below_5th,daily_diff,
-                        TAVG, TMAX, TMIN, RH, Heat_Index, Discomfort_Index)
+    datar <- data.frame(n, Below_5th, Below_Surrounding, region_code, year, month, date, daily_diff,
+                        B1, B3, B5, Coldwave_condition, TAVG, TMAX, TMIN)
     Datar <- rbind(Datar, datar)
     n = n + 1
   }
@@ -278,7 +281,7 @@ for (i in Weather$number) {
     mydata$Coldwave_condition <- 0
     print(n)
     for (j in mydata$TAVG){
-      if(x <= 4747){
+      if(x <= 11321){
         region_code <- mydata$region_code
         year <- mydata$year
         b <- mydata$number
@@ -296,7 +299,7 @@ for (i in Weather$number) {
       x = x + 1
       k = k + 1
     }
-    datar1 <- data.frame(n, Zip, EHI_sig, EHI_accl, Coldwave_condition)
+    datar1 <- data.frame(n, EHI_sig, EHI_accl, Coldwave_condition)
     Datar1 <- rbind(Datar1, datar1)
     n = n + 1
   }
@@ -314,14 +317,5 @@ Datar2$Coldwave_condition <- NULL
 Datar2$n <- NULL
 
 Cold_Index <- cbind(Datar3, Datar2)
-fwrite(Cold_Index, "NC_Coldwave_ML.csv")
-
-
-
-
-
-
-
-
-
+fwrite(Cold_Index, "SC_Cold_Index.csv")
 
