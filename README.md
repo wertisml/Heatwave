@@ -43,9 +43,9 @@ Above_95th = A95
 Above_97th = A97
 Above_99th = A99
 - These three variables were calculated the same way, 
-      Extremes <- NC_Zip_Level %>% 
-                 dplyr::group_by(Zip, month) %>% 
-                 dplyr::do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05)))))
+Extremes <- NC_Zip_Level %>% 
+            dplyr::group_by(Zip, month) %>% 
+            dplyr::do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05)))))
                  
   this creates a 95th, 97th, and 99th percentile value for each ZIP Code for each month, allowing for a more accurate window of extreme temperature across a year.
 
