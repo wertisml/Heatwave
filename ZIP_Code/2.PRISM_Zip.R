@@ -6,6 +6,7 @@ library(raster)
 library(tictoc)
 library(purrr)
 library(tidyverse)
+library(prism)
 
 #==============================================================================#
 #Pre-process
