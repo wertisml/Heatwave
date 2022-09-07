@@ -42,7 +42,8 @@ high_intensity = (ifelse(EHF >= 2, 1, 0)),
 Above_95th = A95
 Above_97th = A97
 Above_99th = A99
-- These three variables were calculated the same way, 
+- These three variables were calculated the same way.
+ 
 Extremes <- NC_Zip_Level %>% 
             dplyr::group_by(Zip, month) %>% 
             dplyr::do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05)))))
