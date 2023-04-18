@@ -49,9 +49,6 @@ po/*~
 rsconnect/
 
 # files types
-*.parquet
 *.sas7bdat
 *.csv
 
-# Ignore this entire directory
-Data/
