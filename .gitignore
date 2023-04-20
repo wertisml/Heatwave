@@ -52,3 +52,5 @@ rsconnect/
 *.sas7bdat
 *.csv
 
+# Practice dataset folder
+Data/Practice/
