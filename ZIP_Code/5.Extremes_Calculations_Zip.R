@@ -44,7 +44,7 @@ Heat_Calc <- Heatwave %>%
          low_intensity, moderate_intensity, high_intensity)
 
 #==============================================================================#
-#write to .csv
+#write to .parquet
 #==============================================================================#
 
 write_parquet(Heat_Calc, "Heatwave_Metrics.parquet")
