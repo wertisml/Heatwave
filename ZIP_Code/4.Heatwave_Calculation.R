@@ -25,13 +25,10 @@ Temperature <- left_join(open_dataset("NC_PRISM_ZIP_2008_2021.parquet") %>% # Cr
                            mutate(month = month(Date)) %>%
                            collect() %>%
                            group_by(Zip, month) %>%
-                           do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05))))) %>%
+                           do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99))))) %>%
                            rename(H95 = X95.,
                                   H97 = X97.,
-                                  H99 = X99.,
-                                  C1 = X1.,
-                                  C3 = X3.,
-                                  C5 = X5.),
+                                  H99 = X99.),
                          by = c("Zip", "month")) %>%
   arrange(Date) %>%
   na.omit(.) # Remove any rows that contain missing values
@@ -178,7 +175,7 @@ EHI_accl <- function(Data){
 }
 
 #==============================================================================#
-#Calculate Heat Wave
+# Calculate Heat Wave
 #==============================================================================#
 
 
