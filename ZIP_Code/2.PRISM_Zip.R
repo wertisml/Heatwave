@@ -3,7 +3,6 @@ library(dplyr)
 library(rgdal)
 library(sf)
 library(raster)
-library(tictoc)
 library(purrr)
 library(tidyverse)
 library(prism)
@@ -12,9 +11,9 @@ library(prism)
 #Pre-process
 #==============================================================================#
 
-ZipShape <- st_read( "E:\\PRISM_Data\\SC_Shapefile\\SC_Shapefile\\South_Carolina.shp")
+ZipShape <- st_read("~/Heatwave/Data/Practice/Test")
 
-dat.files  <- list.files(path="E:/PRISM_Data/DewPoint",
+dat.files  <- list.files(path="~/Heatwave/Data/Practice/Test",
                          recursive=T,
                          pattern="\\_bil.bil$",
                          full.names=T,
@@ -22,22 +21,25 @@ dat.files  <- list.files(path="E:/PRISM_Data/DewPoint",
                          no.. = TRUE)
 
 #Change the date to be the start of the raster, length.out is the number of rasters in the list
-tempo <- seq(as.Date("2018/01/01"), by = "day", length.out = 1096) 
+tempo <- seq(as.Date("2018/01/01"), by = "day", length.out = length(dat.files)) 
 
 #==============================================================================#
 #Brick the rasters and cut up the rasters
 #==============================================================================#
 
-prism_set_dl_dir("E:/PRISM_Data/Tmax")
+prism_set_dl_dir("~/Heatwave/Data/Practice/Test")
 
 #combine all rasters into one
-tic()
+
 mystack <- pd_stack(prism_archive_subset(
-  "tmax",
+  "tmean",
   temp_period = "daily",
   minDate = "2018-01-01", 
   maxDate = "2020-12-31"))
-toc()
+
+ZipShape <- ZipShape %>%
+  select(OBJECTID, ZCTA5CE10, geometry)
+
 #Change the file names
 r <- setNames(mystack, tempo)
 #make the shapefile have the same spatial extent as the raster
@@ -56,7 +58,6 @@ temps <- temps %>%
 #==============================================================================#
 #For loop to transpose the data and create a new file
 #==============================================================================#
-#temps <- fread("C:\\Users\\owner\\Documents\\GRAM\\HeatWave\\Data\\PRISM_DewPoint\\A_Final_Product\\tdmean_2017.csv")
 
 data = NULL
 data <- data.table(data)
@@ -66,22 +67,22 @@ for(i in temps$OBJECTID){
     
     first <- temps[i,]
     
-    tran <- cbind(t(first[,11:ncol(temps)]), colnames(first[,11:ncol(temps)]))
+    tran <- cbind(t(first[,3:ncol(temps)]), colnames(first[,3:ncol(temps)]))
     
     combined <- data.table(cbind(tran, first[,2]))
     
-    colnames(combined) <- c("tmax", "Date", "Zip")
+    colnames(combined) <- c("tmean", "Date", "Zip")
     
     comb <- combined %>%
       mutate(Date = str_sub(Date, 2, -1),
              Date = as.Date(gsub("\\.", "-", Date)),
-             tmax = round(as.numeric(tmax), digits = 2))
+             tmean = round(as.numeric(tmean), digits = 2))
+             
     n = n+1
     print(n)
     data <- rbind(data, comb)
   }
 }
 
-setwd("E:/PRISM_Data/Tmax/A_Final_Product")
-fwrite(data, "tdmean_2018_2020.csv")
+write_parquet(data, "tmean_2020.parquet")
 
