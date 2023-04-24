@@ -11,7 +11,7 @@ library(prism)
 #Pre-process
 #==============================================================================#
 
-ZipShape <- st_read("~/Heatwave/Data/Practice/Test")
+ZipShape <- st_read("~/Heatwave/ZIP_Code/NC_Shapefile/ZIP_Code_Tabulation_Areas.shp")
 
 dat.files  <- list.files(path="~/Heatwave/Data/Practice/Test",
                          recursive=T,
@@ -37,8 +37,8 @@ mystack <- pd_stack(prism_archive_subset(
   minDate = "2018-01-01", 
   maxDate = "2020-12-31"))
 
-ZipShape <- ZipShape %>%
-  select(OBJECTID, ZCTA5CE10, geometry)
+ # ZipShape <- ZipShape %>%
+ #   select(OBJECTID, ZCTA5CE10, geometry)
 
 #Change the file names
 r <- setNames(mystack, tempo)
@@ -67,7 +67,7 @@ for(i in temps$OBJECTID){
     
     first <- temps[i,]
     
-    tran <- cbind(t(first[,3:ncol(temps)]), colnames(first[,3:ncol(temps)]))
+    tran <- cbind(t(first[,11:ncol(temps)]), colnames(first[,11:ncol(temps)]))
     
     combined <- data.table(cbind(tran, first[,2]))
     

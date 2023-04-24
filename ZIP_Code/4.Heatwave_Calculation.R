@@ -32,47 +32,14 @@ Temperature <- left_join(open_dataset("NC_PRISM_ZIP_2008_2021.parquet") %>% # Cr
 # Create Heatwave Functions
 #==============================================================================#
 
-# Calculate the EHI significance
-EHI_sig <- function(Data){
-  
-  # Set the window size
-  window_size <- 3
-  
-  # Initialize the start and end indices of the window
-  start_index <- 1
-  end_index <- window_size
-  
-  # Initialize a new column called is_larger
-  Data[, "EHI_sig"] <- 0
-  
-  # Loop through the dataset row by row with a 3 row window
-  while (end_index <= nrow(Data)) {
-    
-    # Get the current window of rows
-    current_window <- Data[start_index:end_index, ]
-    
-    # Check if the current window is larger than the mean value of the whole column
-    Data$EHI_sig[end_index] <- mean(current_window$TAVG) - mean(current_window$H95) 
-    
-    # Increment the start and end indices of the window
-    start_index <- start_index + 1
-    end_index <- end_index + 1
-  }
-  return(Data)
-}
-
 # Calculate the EHI acclimation 
-EHI_accl <- function(Data){
-  
-  # Set the window size
-  window_size <- 3
+Three_day_average <- function(Data){
   
   # Initialize the start and end indices of the window
   start_index <- 31
-  end_index <- window_size
   
   # Initialize a new column called is_larger
-  Data[, "EHI_accl"] <- 0
+  Data[, "three_day_average"] <- 0
   
   # Loop through the dataset row by row with a 3 row window
   while ((start_index+2) <= nrow(Data)) {
@@ -83,6 +50,56 @@ EHI_accl <- function(Data){
     # Get the mean value of the current window
     current_window_mean <- mean(current_window$TAVG)
     
+    # Check if the current window mean value is greater than the previous 30 rows mean value
+    Data$three_day_average[start_index] <- current_window_mean 
+    
+    # Increment the start and end indices of the window
+    start_index <- start_index + 1
+    
+  }
+  return(Data)
+}
+
+# Calculate the EHI acclimation 
+Three_day_95th_percentile <- function(Data){
+  
+  # Initialize the start and end indices of the window
+  start_index <- 31
+  
+  # Initialize a new column called is_larger
+  Data[, "three_day_95th_percentile"] <- 0
+  
+  # Loop through the dataset row by row with a 3 row window
+  while ((start_index+2) <= nrow(Data)) {
+    
+    # Get the current window of rows
+    current_window <- Data[(start_index-2):(start_index), ]
+    
+    # Get the mean value of the current window
+    current_window_mean <- mean(current_window$H95)
+    
+    # Check if the current window mean value is greater than the previous 30 rows mean value
+    Data$three_day_95th_percentile[start_index] <- current_window_mean 
+    
+    # Increment the start and end indices of the window
+    start_index <- start_index + 1
+    
+  }
+  return(Data)
+}
+
+# Calculate the EHI acclimation 
+Previous_30_day_mean <- function(Data){
+  
+  # Initialize the start and end indices of the window
+  start_index <- 31
+  
+  # Initialize a new column called is_larger
+  Data[, "Previous_30_day_mean"] <- 0
+  
+  # Loop through the dataset row by row with a 3 row window
+  while ((start_index+2) <= nrow(Data)) {
+    
     # Get the previous 30 rows
     prev_30_rows <- Data[(start_index-30):(start_index-1), ]
     
@@ -90,38 +107,48 @@ EHI_accl <- function(Data){
     prev_30_rows_mean <- mean(prev_30_rows$TAVG)
     
     # Check if the current window mean value is greater than the previous 30 rows mean value
-    Data$EHI_accl[start_index] <- current_window_mean - prev_30_rows_mean 
+    Data$Previous_30_day_mean[start_index] <- prev_30_rows_mean 
     
     # Increment the start and end indices of the window
     start_index <- start_index + 1
-    end_index <- end_index + 1
+    
   }
   return(Data)
 }
 
+Calculate <- function(Data) {
+  
+  Data %>%
+    Three_day_average() %>%
+    Three_day_95th_percentile() %>%
+    Previous_30_day_mean()
+}  
+
 #==============================================================================#
 # Calculate Heat Wave
 #==============================================================================#
+
 
 EHF_pipeline <- function(dataset) {
   
   Test <- dataset %>%
     select(Zip, Date, TAVG, H95) %>%
     nest(data = c(-Zip)) %>%
-    mutate(EHI_sig = future_map(data, EHI_sig),
-           EHI_accl = future_map(data, EHI_accl)) %>%
+    mutate(calculate = future_map(data, Calculate)) %>%
     select(-data) %>% 
-    unnest(cols = c(EHI_sig, EHI_accl), names_repair = "minimal") %>% #unnests the nested data
-    subset(., select = which(!duplicated(names(.)))) %>% # Remove the duplicated column names 
-     mutate(EHI_sig = if_else(EHI_sig < 0, 0, EHI_sig),
-            EHI_accl = if_else(EHI_accl < 1, 1, EHI_accl),
-            EHF = EHI_sig * EHI_accl)
+    unnest(cols = c(calculate), names_repair = "minimal") %>% #unnests the nested data
+    mutate(EHI_sig = three_day_average - three_day_95th_percentile,
+           EHI_accl = three_day_average - Previous_30_day_mean,
+           EHI_sig = if_else(EHI_sig < 0, 0, EHI_sig),
+           EHI_accl = if_else(EHI_accl < 1, 1, EHI_accl),
+           EHF = EHI_sig * EHI_accl) %>%
+    select(-three_day_95th_percentile, -three_day_average, -Previous_30_day_mean)
 }
 
 # Run in parallel
 plan(multisession, workers = (availableCores() - 1))
 start <- now()
-Temperature <- EHF_pipeline(Temperature)
+Temperature_1 <- EHF_pipeline(Temperature)
 end <- now()
 end-start
 

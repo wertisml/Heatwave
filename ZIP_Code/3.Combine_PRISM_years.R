@@ -1,7 +1,7 @@
 library(data.table)
 library(dplyr)
 
-dat.files  <- list.files(path="E:/PRISM_Data/Tmean/A_Final_Product",
+dat.files  <- list.files(path="~/Heatwave/Data/Practice/Test",
                          recursive=T,
                          pattern="\\.csv$",
                          full.names=T,
