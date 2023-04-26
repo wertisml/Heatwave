@@ -35,19 +35,10 @@ low_intensity = (ifelse(EHF > 0 & EHF < 1, 1, 0))
 moderate_intensity = (ifelse(EHF >= 1 & EHF < 2, 1, 0)) 
 - This receives a value of 1 if the EHF for that day is greater than or equal to 1 and less than 2.
 
-
 high_intensity = (ifelse(EHF >= 2, 1, 0)),
 - This receives a value of 2 if the EHF is greater than or equal to 2.
 
-Above_95th = A95
-Above_97th = A97
-Above_99th = A99
-- These three variables were calculated the same way.
  
-Extremes <- NC_Zip_Level %>% 
-            dplyr::group_by(Zip, month) %>% 
-            dplyr::do(data.frame(t(quantile(.$TAVG, probs = c(0.95, 0.97, 0.99, 0.01, 0.03, 0.05)))))
-                 
-  this creates a 95th, 97th, and 99th percentile value for each ZIP Code for each month, allowing for a more accurate window of extreme temperature across a year.
+
 
 
