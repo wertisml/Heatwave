@@ -5,17 +5,17 @@ How variables are calculated in scripts 4 and 5
 
 EHF or Exessive Heat Factor is calculated using; 
   
-|  First, the Exessive Heat Index (EHI) is determined, which is the value of the 3 day temperature average subracted from the 95th percentile of heat.
-|      EHI <- (3 Day temeprature average) - 95th temperature percentile
+  First, the Exessive Heat Index (EHI) is determined, which is the value of the 3 day temperature average subracted from the 95th percentile of heat.
+      -EHI <- (3 Day temeprature average) - 95th temperature percentile
        
   EHI_accl is the value of the 3 day average subrtacted from the previous 30 day average temperature     
-       EHI_accl <- (3 Day temeprature average) - (previous 30 day temperatre average)
+       -EHI_accl <- (3 Day temeprature average) - (previous 30 day temperatre average)
        
   EHI_sig is when the EHI is positive     
-       EHI_sig <- fifelse(EHI < 0, 0, EHI)
+       -EHI_sig <- fifelse(EHI < 0, 0, EHI)
 
   EHF is the product of a positive EHI_sig multiplied by which ever is greater, 1, or the EHI_accl 
-       EHF <- EHI_sig * max(1, EHI_accl)
+       -EHF <- EHI_sig * max(1, EHI_accl)
 
 No_Heatwave = (daynum - Heatwave_condition)
 - Daynum is a value of 1 and is subtracted from the a column indicating if there was a heatwave or not, meaning a value of 1 is a day of no heatwave 
