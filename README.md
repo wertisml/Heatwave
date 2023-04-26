@@ -5,8 +5,8 @@ How variables are calculated in scripts 4 and 5
 
 EHF or Exessive Heat Factor is calculated using; 
   
-  First, the Exessive Heat Index (EHI) is determined, which is the value of the 3 day temperature average subracted from the 95th percentile of heat.
-       EHI <- (3 Day temeprature average) - 95th temperature percentile
+|  First, the Exessive Heat Index (EHI) is determined, which is the value of the 3 day temperature average subracted from the 95th percentile of heat.
+|      EHI <- (3 Day temeprature average) - 95th temperature percentile
        
   EHI_accl is the value of the 3 day average subrtacted from the previous 30 day average temperature     
        EHI_accl <- (3 Day temeprature average) - (previous 30 day temperatre average)
