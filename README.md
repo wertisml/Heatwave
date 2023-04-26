@@ -29,7 +29,7 @@ Severe_Heatwaves = (ifelse(EHF >= EHF85, 1, 0))
 Extreme_Heatwaves = (ifelse(EHF >= (3 * EHF85), 1, 0))
 - This receives a value of 1 if the EHF for that day is equal to or greater than 3 times the 85th percentile of all EHF for that area.
 
-low_intensity = (ifelse(EHF > 0 & EHF < 1, 1, 0))
+###low_intensity = (ifelse(EHF > 0 & EHF < 1, 1, 0))
 - This receives a value of 1 if the EHF for that day is greater than 0 and less than 1.
 
 moderate_intensity = (ifelse(EHF >= 1 & EHF < 2, 1, 0)) 
