@@ -128,7 +128,6 @@ Calculate <- function(Data) {
 # Calculate Heat Wave
 #==============================================================================#
 
-
 EHF_pipeline <- function(dataset) {
   
   Test <- dataset %>%

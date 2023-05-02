@@ -13,7 +13,7 @@ library(prism)
 
 ZipShape <- st_read("~/Heatwave/ZIP_Code/NC_Shapefile/ZIP_Code_Tabulation_Areas.shp")
 
-dat.files  <- list.files(path="~/Heatwave/Data/Practice/Test",
+dat.files  <- list.files(path="~/Heatwave/Data/Practice_Rasters/Tmean",
                          recursive=T,
                          pattern="\\_bil.bil$",
                          full.names=T,
@@ -27,27 +27,21 @@ tempo <- seq(as.Date("2018/01/01"), by = "day", length.out = length(dat.files))
 #Brick the rasters and cut up the rasters
 #==============================================================================#
 
-prism_set_dl_dir("~/Heatwave/Data/Practice/Test")
-
 #combine all rasters into one
-
-mystack <- pd_stack(prism_archive_subset(
-  "tmean",
-  temp_period = "daily",
-  minDate = "2018-01-01", 
-  maxDate = "2020-12-31"))
-
- # ZipShape <- ZipShape %>%
- #   select(OBJECTID, ZCTA5CE10, geometry)
+mystack <- stack(dat.files)
 
 #Change the file names
 r <- setNames(mystack, tempo)
+
 #make the shapefile have the same spatial extent as the raster
 ZipShape <- st_transform(ZipShape, st_crs(r))
+
 #alter raster to shapefile shape
 r.crop <- crop(r, extent(ZipShape))
+
 #get the values for everyhting in the brick
 r.mean = raster::extract(r.crop, ZipShape, method = "simple", fun = mean, sp = T)
+
 # Write results
 temps <- as.data.frame(r.mean)
 
